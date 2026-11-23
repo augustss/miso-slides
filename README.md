@@ -70,3 +70,7 @@ miso watch      # type check on every change
 
 `target` in `miso.yml` picks the output: `browser` (WebAssembly, needs
 `emcc`), `browser_js` (JavaScript), or `native`.
+
+## License
+
+Apache License 2.0; see `LICENSE`.
