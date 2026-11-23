@@ -3,6 +3,10 @@
 Write presentation slides in Haskell, and show them in a browser with
 [miso](https://haskell-miso.org).
 
+**[See the demo](https://augustss.github.io/miso-slides/)**: a presentation
+about [MicroHs](https://github.com/augustss/MicroHs), made with this
+library (`app/Main.hs`).
+
 ```haskell
 {-# LANGUAGE OverloadedStrings #-}
 import Miso.Slides
@@ -85,6 +89,9 @@ miso watch      # type check on every change
 
 `target` in `miso.yml` picks the output: `browser` (WebAssembly, needs
 `emcc`), `browser_js` (JavaScript), or `native`.
+
+Every push to `main` rebuilds the demo, and publishes it with GitHub Pages
+(`.github/workflows/pages.yml`).
 
 ## License
 
