@@ -61,6 +61,21 @@ The project is built with the `miso` command-line tool (miso-cli), which
 compiles with MicroHs; the project is described by `miso.yml`.
 `app/Main.hs` contains a presentation about MicroHs.
 
+To install miso-cli:
+
+```
+curl -fsSL https://haskell-miso.org/download | sh
+miso doctor     # check the installation and the tools it needs
+```
+
+The installer downloads the release for your OS and architecture and
+unpacks it into `~/.miso`; it asks before changing your `PATH`.  miso
+needs a C compiler (`cc`), and [emscripten](https://emscripten.org)
+(`emcc`) for the browser target this project uses.  See the
+[miso CLI docs](https://haskell-miso.org/docs/cli/) for more.
+
+Then, in a clone of this repository:
+
 ```
 miso dev        # build, serve, and reload the page when a source file changes
 miso build      # just build: public/index.js, next to the files from static/
