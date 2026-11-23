@@ -1,0 +1,7 @@
+name: miso-slides
+version: 0.1.0
+main: Main
+source-dirs: [src, app]
+# browser: WebAssembly (needs emcc), browser_js: JavaScript, native: an executable
+target: browser
+dependencies: [miso]
