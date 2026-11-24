@@ -11,7 +11,8 @@ main = runSlides deck
 
 deck :: [Slide]
 deck =
-  [ titleSlideWith
+  [ bookmark 0 $
+    titleSlideWith
       [ sizedImage "2.6em" "haskell-symbol.svg" ]
       "MicroHs" "A small compiler for Haskell"
       [ author "Lennart Augustsson"
@@ -376,7 +377,8 @@ deck =
       , codeLines
           [ "deck :: [Slide]"
           , "deck ="
-          , "  [ titleSlideWith [sizedImage \"2.6em\" \"haskell-symbol.svg\"]"
+          , "  [ bookmark 0 $"
+          , "    titleSlideWith [sizedImage \"2.6em\" \"haskell-symbol.svg\"]"
           , "      \"MicroHs\" \"A small compiler for Haskell\""
           , "      [author \"Lennart Augustsson\", flow ...]"
           , "  , slide \"What is MicroHs?\" [ ... ]"
@@ -392,7 +394,8 @@ deck =
           ]
       ]
 
-  , titleSlide "Thank you" "Questions?"
+  , bookmark 9 $
+    titleSlide "Thank you" "Questions?"
   ]
 
 -----------------------------------------------------------------------------

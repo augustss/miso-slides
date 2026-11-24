@@ -11,6 +11,8 @@
 --   * next slide: Right, Down, Space, Enter, PageDown
 --   * previous slide: Left, Up, Backspace, PageUp
 --   * first / last slide: Home / End
+--   * the slide with bookmark n: the digit n (see 'bookmark')
+--   * back to where you were before jumping to a bookmark: B
 --   * laser pointer on/off: P (see "Miso.Slides.Pointer")
 --
 -- On a touch screen, swipe left for the next slide, and right for the
@@ -23,6 +25,7 @@ module Miso.Slides
   , titleSlide
   , titleSlideWith
   , author
+  , bookmark
     -- * Block content
   , para
   , bullets
@@ -60,6 +63,7 @@ import           Miso.Slides.Pointer (pointer, pointerCSS)
 data Model = Model
   { slideIndex :: Int                     -- ^ the slide shown, from 0
   , swipeFrom  :: Maybe (Double, Double)  -- ^ where a one-finger touch started
+  , jumpedFrom :: [Int]                   -- ^ where bookmark jumps came from, latest first
   } deriving (Eq)
 
 -- | Navigation actions.
@@ -69,6 +73,8 @@ data Action
   | First
   | Last
   | GoTo Int
+  | Bookmark Int   -- ^ go to the slide with this bookmark
+  | Back           -- ^ go back to where the latest bookmark jump came from
   | TouchStart [(Double, Double)]  -- ^ the fingers on the screen
   | TouchEnd [(Double, Double)]    -- ^ the fingers lifted
   | NoOp
@@ -78,15 +84,16 @@ data Action
 -- @OverloadedStrings@ a string literal can be used as 'Html'.
 type Html = View () () Model Action
 
--- | A slide: a layout (a CSS class) and its content.
+-- | A slide: a layout (a CSS class), its content, and its bookmarks.
 data Slide = Slide
-  { slideLayout  :: MisoString
-  , slideContent :: [Html]
+  { slideLayout    :: MisoString
+  , slideContent   :: [Html]
+  , slideBookmarks :: [Int]
   }
 
 -- | An ordinary slide with a heading and a body.
 slide :: MisoString -> [Html] -> Slide
-slide title body = Slide "content" (H.h2_ [] [text title] : body)
+slide title body = Slide "content" (H.h2_ [] [text title] : body) []
 
 -- | A slide with a large centered title and a subtitle.
 titleSlide :: MisoString -> MisoString -> Slide
@@ -95,7 +102,13 @@ titleSlide title sub = titleSlideWith [] title sub []
 -- | A title slide with more content above the title and below the subtitle.
 titleSlideWith :: [Html] -> MisoString -> MisoString -> [Html] -> Slide
 titleSlideWith above title sub below =
-  Slide "title" (above ++ H.h1_ [] [text title] : H.p_ [P.class_ "subtitle"] [text sub] : below)
+  Slide "title" (above ++ H.h1_ [] [text title] : H.p_ [P.class_ "subtitle"] [text sub] : below) []
+
+-- | Give a slide a bookmark, 0 to 9: the key with that digit jumps to the
+-- slide, and B jumps back.  (If two slides have the same bookmark, the
+-- first one gets it.)
+bookmark :: Int -> Slide -> Slide
+bookmark n s = s { slideBookmarks = n : slideBookmarks s }
 
 -- | The author's name, e.g., under the subtitle of a title slide.
 author :: MisoString -> Html
@@ -175,16 +188,21 @@ runSlides = startApp defaultEvents . slidesApp
 -- (e.g., add your own 'styles').
 slidesApp :: [Slide] -> App Model Action
 slidesApp slides =
-  (component (Model 0 Nothing) (updateModel (length slides)) (viewModel slides))
+  (component (Model 0 Nothing []) (updateModel (length slides) marks) (viewModel slides))
     { subs   = [ windowSub "keydown" keycodeDecoder keyAction
                , windowSub "touchstart" (touchDecoder "touches") TouchStart
                , windowSub "touchend" (touchDecoder "changedTouches") TouchEnd
                ]
     , styles = [ Style slidesCSS, Style pointerCSS ]
     }
+  where
+    marks = [ (b, i) | (i, s) <- zip [0 ..] slides, b <- slideBookmarks s ]
 
 keyAction :: KeyCode -> Action
 keyAction (KeyCode k)
+  | 48 <= k && k <= 57            = Bookmark (k - 48)   -- digits
+  | 96 <= k && k <= 105           = Bookmark (k - 96)   -- digits on the keypad
+  | k == 66                       = Back   -- B
   | k `elem` [39, 40, 32, 13, 34] = Next   -- right, down, space, enter, page down
   | k `elem` [37, 38, 8, 33]      = Prev   -- left, up, backspace, page up
   | k == 36                       = First  -- home
@@ -210,13 +228,22 @@ swipe (x0, y0) (x1, y1)
     dx = x1 - x0
     dy = y1 - y0
 
-updateModel :: Int -> Action -> Effect () () Model Action
-updateModel n = \case
+-- | Update the model, given the number of slides, and the slide of each
+-- bookmark.
+updateModel :: Int -> [(Int, Int)] -> Action -> Effect () () Model Action
+updateModel n marks = \case
   Next   -> move (+ 1)
   Prev   -> move (subtract 1)
   First  -> move (const 0)
   Last   -> move (const (n - 1))
   GoTo i -> move (const i)
+  Bookmark b -> case lookup b marks of
+    Just i  -> modify (\m -> if i == slideIndex m then m
+                             else m { slideIndex = i, jumpedFrom = slideIndex m : jumpedFrom m })
+    Nothing -> pure ()
+  Back -> modify (\m -> case jumpedFrom m of
+                          i : is -> m { slideIndex = i, jumpedFrom = is }
+                          []     -> m)
   -- Only a one-finger touch can be a swipe; with two it is, e.g., a pinch.
   TouchStart [p] -> modify (\m -> m { swipeFrom = Just p })
   TouchStart _   -> modify (\m -> m { swipeFrom = Nothing })
@@ -224,7 +251,7 @@ updateModel n = \case
     m <- get
     put m { swipeFrom = Nothing }
     case (swipeFrom m, ps) of
-      (Just p0, p1 : _) | Just a <- swipe p0 p1 -> updateModel n a
+      (Just p0, p1 : _) | Just a <- swipe p0 p1 -> updateModel n marks a
       _                                         -> pure ()
   NoOp   -> pure ()
   where
@@ -240,7 +267,7 @@ viewModel slides m =
   where
     s = case drop i slides of
           x : _ -> x
-          []    -> Slide "title" ["(no slides)"]
+          []    -> Slide "title" ["(no slides)"] []
     i = slideIndex m
     slideNo = ms (i + 1) <> " / " <> ms (length slides)
 

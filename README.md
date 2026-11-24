@@ -22,6 +22,8 @@ main = runSlides
 ```
 
 Navigate with the arrow keys, Space/Backspace, PageUp/PageDown, and Home/End.
+A digit jumps to the slide with that bookmark (see `bookmark`), and B jumps
+back to where you were.
 On a phone or tablet, swipe left for the next slide and right for the
 previous one.
 P turns a laser pointer on and off: a red blob that follows the mouse and
@@ -37,6 +39,7 @@ while moving it to draw; the drawing stays until the slide changes.
 | `titleSlide title subtitle` | A centered title slide |
 | `titleSlideWith above title subtitle below` | A title slide with more content, e.g., a logo above |
 | `author name` | The author's name, e.g., below the subtitle |
+| `bookmark n slide` | Bookmark a slide with a digit, 0 to 9: that key jumps to it, and B jumps back |
 | `para`, `bullets`, `numbered` | Paragraph, bulleted list, numbered list (`[Html] -> Html`) |
 | `codeBlock`, `codeLines` | Preformatted code, as one string or as a list of lines |
 | `image`, `sizedImage height` | An image URL, full width or with a given CSS height |
