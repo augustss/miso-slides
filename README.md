@@ -34,6 +34,7 @@ while moving it to draw; the drawing stays until the slide changes.
 | `slide title body` | A slide with a heading |
 | `titleSlide title subtitle` | A centered title slide |
 | `titleSlideWith above title subtitle below` | A title slide with more content, e.g., a logo above |
+| `author name` | The author's name, e.g., below the subtitle |
 | `para`, `bullets`, `numbered` | Paragraph, bulleted list, numbered list (`[Html] -> Html`) |
 | `codeBlock`, `codeLines` | Preformatted code, as one string or as a list of lines |
 | `image`, `sizedImage height` | An image URL, full width or with a given CSS height |

@@ -12,9 +12,11 @@ main = runSlides deck
 deck :: [Slide]
 deck =
   [ titleSlideWith
-      [ sizedImage "2.2em" "haskell-logo.svg" ]
+      [ sizedImage "2.6em" "haskell-symbol.svg" ]
       "MicroHs" "A small compiler for Haskell"
-      [ flow [["Haskell"], ["λ-calculus"], ["Combinators"], ["C runtime"]] ]
+      [ author "Lennart Augustsson"
+      , flow [["Haskell"], ["λ-calculus"], ["Combinators"], ["C runtime"]]
+      ]
 
   , slide "What is MicroHs?"
       [ bullets
@@ -73,6 +75,10 @@ deck =
           [ "greet :: String -> Int -> String"
           , "greet name n = s\"Hello ${name}, you are number ${n + 1}\""
           ]
+      , codeLines
+          [ "mhs> greet \"Lennart\" 41"
+          , "\"Hello Lennart, you are number 42\""
+          ]
       , para ["Qualified strings: ", tt "T.\"abc\"", " means ", tt "T.fromString \"abc\""]
       , para ["Extra commas: ", tt "[1, 2, 3,]", " (GHC is getting them too)"]
       ]
@@ -81,13 +87,15 @@ deck =
       [ para ["One instance declaration, several classes"]
       , codeLines
           [ "data Color = Red | Green"
-          , ""
           , "instance (Eq Color, Show Color) where"
           , "  Red   == Red   = True"
           , "  Green == Green = True"
           , "  _     == _     = False"
           , "  show Red   = \"Red\""
           , "  show Green = \"Green\""
+          , ""
+          , "type ES a = (Eq a, Show a)    -- a constraint synonym"
+          , "instance ES Color where ...   -- the same instance"
           ]
       ]
 
@@ -185,6 +193,15 @@ deck =
       , bullets
           [ "Constructors and case are built into the runtime (new in 0.17)"
           , "They are stored in the pointer itself, and take no heap space"
+          ]
+      ]
+
+  , slide "How case works"
+      [ row [graph caseBefore, "⇒", graph caseAfter]
+      , bullets
+          [ para [tt "D_0_2", " pushes a marker, and evaluates the scrutinee"]
+          , para [tt "C_1_2", " finds the marker, and overwrites the case with ", tt "f y ys"]
+          , para ["A sparse case, ", tt "E_…", ", has a default, and a few arms"]
           ]
       ]
 
@@ -359,8 +376,9 @@ deck =
       , codeLines
           [ "deck :: [Slide]"
           , "deck ="
-          , "  [ titleSlideWith [sizedImage \"2.2em\" \"haskell-logo.svg\"]"
-          , "      \"MicroHs\" \"A small compiler for Haskell\" [flow ...]"
+          , "  [ titleSlideWith [sizedImage \"2.6em\" \"haskell-symbol.svg\"]"
+          , "      \"MicroHs\" \"A small compiler for Haskell\""
+          , "      [author \"Lennart Augustsson\", flow ...]"
           , "  , slide \"What is MicroHs?\" [ ... ]"
           ]
       ]
@@ -393,6 +411,11 @@ mapGraph =
 sBefore, sAfter :: Graph
 sBefore = Mark (l "S" :@ l "f" :@ l "g" :@ l "x")
 sAfter  = Mark (l "f" :@ Share "x" (l "x") :@ (l "g" :@ Ref "x"))
+
+-- | case xs of { [] -> a; y:ys -> f y ys }, when xs is y:ys
+caseBefore, caseAfter :: Graph
+caseBefore = Mark (l "D_0_2" :@ l "a" :@ l "f" :@ (l "C_1_2" :@ l "y" :@ l "ys"))
+caseAfter  = Mark (l "f" :@ l "y" :@ l "ys")
 
 -- | iinc = inc d, after the S' reduction, and after evaluating its parts
 specBefore, specAfter :: Graph

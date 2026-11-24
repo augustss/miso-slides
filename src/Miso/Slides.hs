@@ -19,6 +19,7 @@ module Miso.Slides
   , slide
   , titleSlide
   , titleSlideWith
+  , author
     -- * Block content
   , para
   , bullets
@@ -86,6 +87,10 @@ titleSlide title sub = titleSlideWith [] title sub []
 titleSlideWith :: [Html] -> MisoString -> MisoString -> [Html] -> Slide
 titleSlideWith above title sub below =
   Slide "title" (above ++ H.h1_ [] [text title] : H.p_ [P.class_ "subtitle"] [text sub] : below)
+
+-- | The author's name, e.g., under the subtitle of a title slide.
+author :: MisoString -> Html
+author s = H.p_ [P.class_ "author"] [text s]
 
 -----------------------------------------------------------------------------
 -- Content
@@ -221,6 +226,7 @@ slidesCSS = mconcat
   , ".slide h2 { font-size: 1.6em; margin: 0 0 0.5em; padding-bottom: 0.2em;"
   , "            border-bottom: 0.06em solid #b33; }"
   , ".slide .subtitle { font-size: 1.2em; color: #666; margin: 0; }"
+  , ".slide .author { font-size: 1.1em; margin: 0.8em 0 0; }"
   , ".slide p { margin: 0.4em 0; }"
   , ".slide ul, .slide ol { margin: 0.4em 0; }"
   , ".slide li { margin: 0.3em 0; }"
