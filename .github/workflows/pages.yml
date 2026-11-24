@@ -1,9 +1,11 @@
 # Build the slides, and publish them with GitHub Pages, on every push to main.
+# A pull request is only built, not published.
 name: Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -12,8 +14,9 @@ permissions:
   id-token: write
 
 # One deployment at a time; a newer push replaces one that is waiting.
+# Pull requests have their own group, so that they do not cancel a deployment.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,27 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install emscripten
-        uses: mymindstorm/setup-emsdk@v16
-        with:
-          version: 6.0.10
-          actions-cache-folder: emsdk-cache
-
-      - name: Install miso-cli
-        env:
-          MISO_VERSION: v0.2.0
-        run: |
-          curl -fsSL https://haskell-miso.org/download | sh -s -- --yes --no-modify-path
-          echo "$HOME/.miso/bin" >> "$GITHUB_PATH"
-
-      - name: Build
-        run: miso build
+      # Installs the latest miso-cli and emscripten, and runs miso build.
+      - uses: haskell-miso/setup-miso@v1
 
       - uses: actions/upload-pages-artifact@v5
         with:
           path: public
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
