@@ -12,6 +12,9 @@
 --   * previous slide: Left, Up, Backspace, PageUp
 --   * first / last slide: Home / End
 --   * laser pointer on/off: P (see "Miso.Slides.Pointer")
+--
+-- On a touch screen, swipe left for the next slide, and right for the
+-- previous one.
 module Miso.Slides
   ( -- * Slides
     Slide (..)
@@ -46,14 +49,18 @@ import           Miso
 import           Miso.CSS           (styleInline_)
 import qualified Miso.Html          as H
 import qualified Miso.Html.Property as P
+import           Miso.JSON          (withArray, withObject, (.:))
 
 import           Miso.Slides.Pointer (pointer, pointerCSS)
 
 -----------------------------------------------------------------------------
 -- Slides
 
--- | The current slide number (0-based).
-type Model = Int
+-- | The state of a deck.
+data Model = Model
+  { slideIndex :: Int                     -- ^ the slide shown, from 0
+  , swipeFrom  :: Maybe (Double, Double)  -- ^ where a one-finger touch started
+  } deriving (Eq)
 
 -- | Navigation actions.
 data Action
@@ -62,6 +69,8 @@ data Action
   | First
   | Last
   | GoTo Int
+  | TouchStart [(Double, Double)]  -- ^ the fingers on the screen
+  | TouchEnd [(Double, Double)]    -- ^ the fingers lifted
   | NoOp
   deriving (Show, Eq)
 
@@ -166,8 +175,11 @@ runSlides = startApp defaultEvents . slidesApp
 -- (e.g., add your own 'styles').
 slidesApp :: [Slide] -> App Model Action
 slidesApp slides =
-  (component 0 (updateModel (length slides)) (viewModel slides))
-    { subs   = [ windowSub "keydown" keycodeDecoder keyAction ]
+  (component (Model 0 Nothing) (updateModel (length slides)) (viewModel slides))
+    { subs   = [ windowSub "keydown" keycodeDecoder keyAction
+               , windowSub "touchstart" (touchDecoder "touches") TouchStart
+               , windowSub "touchend" (touchDecoder "changedTouches") TouchEnd
+               ]
     , styles = [ Style slidesCSS, Style pointerCSS ]
     }
 
@@ -179,19 +191,47 @@ keyAction (KeyCode k)
   | k == 35                       = Last   -- end
   | otherwise                     = NoOp
 
+-- | The positions of the touches in a list of them, e.g., @touches@.
+touchDecoder :: MisoString -> Decoder [(Double, Double)]
+touchDecoder field = Decoder
+  { decodeAt = DecodeTarget [field]
+  , decoder  = withArray "touches" (mapM touch)
+  }
+  where
+    touch = withObject "touch" $ \o -> (,) <$> o .: "clientX" <*> o .: "clientY"
+
+-- | A swipe, from where a touch started to where it ended: mostly
+-- horizontal, and at least 50 pixels long.
+swipe :: (Double, Double) -> (Double, Double) -> Maybe Action
+swipe (x0, y0) (x1, y1)
+  | abs dx >= 50 && abs dx > 2 * abs dy = Just (if dx < 0 then Next else Prev)
+  | otherwise                           = Nothing
+  where
+    dx = x1 - x0
+    dy = y1 - y0
+
 updateModel :: Int -> Action -> Effect () () Model Action
 updateModel n = \case
-  Next   -> modify (goto . (+ 1))
-  Prev   -> modify (goto . subtract 1)
-  First  -> put (goto 0)
-  Last   -> put (goto (n - 1))
-  GoTo i -> put (goto i)
+  Next   -> move (+ 1)
+  Prev   -> move (subtract 1)
+  First  -> move (const 0)
+  Last   -> move (const (n - 1))
+  GoTo i -> move (const i)
+  -- Only a one-finger touch can be a swipe; with two it is, e.g., a pinch.
+  TouchStart [p] -> modify (\m -> m { swipeFrom = Just p })
+  TouchStart _   -> modify (\m -> m { swipeFrom = Nothing })
+  TouchEnd ps -> do
+    m <- get
+    put m { swipeFrom = Nothing }
+    case (swipeFrom m, ps) of
+      (Just p0, p1 : _) | Just a <- swipe p0 p1 -> updateModel n a
+      _                                         -> pure ()
   NoOp   -> pure ()
   where
-    goto i = max 0 (min (n - 1) i)
+    move f = modify (\m -> m { slideIndex = max 0 (min (n - 1) (f (slideIndex m))) })
 
 viewModel :: [Slide] -> Model -> Html
-viewModel slides i =
+viewModel slides m =
   H.div_ [P.class_ "deck"]
     [ H.div_ [P.classes_ ["slide", slideLayout s]]
         (slideContent s ++ [H.div_ [P.class_ "slide-number"] [text slideNo]])
@@ -201,6 +241,7 @@ viewModel slides i =
     s = case drop i slides of
           x : _ -> x
           []    -> Slide "title" ["(no slides)"]
+    i = slideIndex m
     slideNo = ms (i + 1) <> " / " <> ms (length slides)
 
 -----------------------------------------------------------------------------

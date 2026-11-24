@@ -22,6 +22,8 @@ main = runSlides
 ```
 
 Navigate with the arrow keys, Space/Backspace, PageUp/PageDown, and Home/End.
+On a phone or tablet, swipe left for the next slide and right for the
+previous one.
 P turns a laser pointer on and off: a red blob that follows the mouse and
 leaves a fading trail (`Miso.Slides.Pointer`).  Hold the left button down
 while moving it to draw; the drawing stays until the slide changes.
